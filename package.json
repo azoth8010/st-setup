@@ -1,0 +1,11 @@
+{
+  "name": "st-setup",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test/smoke.mjs && node test/wizard.mjs && node test/wizard-manfan.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.1"
+  }
+}
