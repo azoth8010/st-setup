@@ -1,7 +1,7 @@
 // 用迷宫饭真实配置挂载一次，确认没有写死的本卡数据残留
 import { JSDOM } from 'jsdom';
 import { 挂载 } from '../src/wizard.js';
-import { 配置 } from '../examples/manfan/config.js';
+import { 配置 } from '../cards/manfan/config.js';
 
 const dom = new JSDOM('<!doctype html><body><div id="slot"></div></body>', { pretendToBeVisual: true });
 globalThis.window = dom.window; globalThis.document = dom.window.document;

@@ -2,7 +2,7 @@
 // 开局向导（通用外壳）
 //
 // 由卡项目的 preview/开局向导.html 抽出：样式、结构、流程都在这里，
-// 种族 / 职业 / 生活职业 / 属性键 / 技能包 / 声明 由 配置.向导 注入。
+// 选项组 / 属性组 / 额外字段 / 技能包 / 声明 / 起点 全部由 配置.向导 注入。
 //
 // 用法：挂载(容器, { 配置, 写入 })
 //   - 写入(payload) 可选；没有就走演示态（不写任何东西）
@@ -297,26 +297,26 @@ export const 结构 = String.raw`
     <!-- 04 建档 -->
     <section class="pg" data-i="3">
       <div class="pg-h" id="edit-h">新建档案</div>
-      <p class="pg-s">四项：种族、战斗职业、六项属性、名字。生活职业可以不选。</p>
+      <p class="pg-s" id="form-note"></p>
       <p class="pg-s" style="margin-top:2px;color:#8f8270">起点在下一步选。它不影响你的角色，只决定你从哪儿开始。</p>
 
       <div class="field">
-        <div class="lb"><b>种族</b><i id="race-note">长身人 · 无修正</i></div>
+        <div class="lb" id="lb-race"><b></b><i id="race-note"></i></div>
         <div class="chips" id="races"></div>
       </div>
 
       <div class="field">
-        <div class="lb"><b>战斗职业</b><i>核心技能 +15</i></div>
+        <div class="lb" id="lb-job"><b></b><i></i></div>
         <div class="chips" id="jobs"></div>
       </div>
 
       <div class="field">
-        <div class="lb"><b>生活职业</b><i>主职之一，可选</i></div>
+        <div class="lb" id="lb-life"><b></b><i></i></div>
         <div class="chips" id="lives"></div>
       </div>
 
       <div class="field">
-        <div class="lb"><b>副业</b><i>第二个生活职业 · 不选也行</i></div>
+        <div class="lb" id="lb-side"><b>副业</b><i></i></div>
         <div class="chips" id="lives2"></div>
         <div class="pg-s" style="margin-top:4px;color:#8f8270;font-size:11px">
           选了只给这三项技能各 +5，加成有限；职能和主职重复时不会生效。
@@ -324,7 +324,7 @@ export const 结构 = String.raw`
       </div>
 
       <div class="field">
-        <div class="lb"><b>六项属性</b><i>合计 ≤300 · 单项 30–70</i></div>
+        <div class="lb" id="lb-attr"><b>属性</b><i></i></div>
         <div class="attrs" id="attrs"></div>
         <div class="pts" id="pts"><span>已分配 <b>0</b> / 300</span><span id="pts-warn"></span></div>
       </div>
@@ -334,9 +334,9 @@ export const 结构 = String.raw`
         <input class="txt" id="name" placeholder="留空的话，队友会先问你叫什么">
       </div>
 
-      <div class="field">
-        <div class="lb"><b>欲念</b><i>最深的渴望 · 建议 20 字内 · 可留空</i></div>
-        <input class="txt" id="desire" maxlength="99" placeholder="例：想亲眼看看活着的红龙">
+      <div class="field" id="field-extra" hidden>
+        <div class="lb" id="lb-extra"><b></b><i></i></div>
+        <input class="txt" id="desire" placeholder="">
       </div>
 
       <div class="foot">
@@ -380,8 +380,23 @@ export function 挂载(容器, 选项 = {}) {
   const 配置 = 选项.配置 || {};
   const 向导 = 配置.向导 || {};
   const 写入 = 选项.写入 || null;
-  const 职业包 = 向导.技能包 || {};
+  const 技能包 = 向导.技能包 || {};
   const 取 = (id) => 容器.querySelector('#' + id);
+
+  /* 选项槽：引擎只认槽名（race/job/life/side），标签、说明、选项都从配置来 */
+  const 槽表 = {};
+  (向导.选项组 || []).forEach((g) => { 槽表[g.槽] = g; });
+  const 槽选项 = (k) => (槽表[k] && 槽表[k].选项) || [];
+  const 选项清单 = (k) => 槽选项(k).map((x) => (Array.isArray(x) ? x : [x, '']));
+
+  /* 属性组 */
+  const 属性配置 = 向导.属性 || {};
+  const 属性标签 = 属性配置.标签 || '属性';
+  const 属性合计 = 属性配置.合计上限 == null ? 300 : 属性配置.合计上限;
+  const 单项界 = 属性配置.单项 || [30, 70];
+
+  /* 额外文本字段：0 或 1 个，写进 config 指定的变量路径 */
+  const 额外 = (向导.额外字段 || [])[0] || null;
 
   if (!容器.querySelector('#mf-setup-style')) {
     const st = document.createElement('style');
@@ -396,6 +411,32 @@ export function 挂载(容器, 选项 = {}) {
     el.textContent = (k === '卡名' ? 配置.卡名 : 向导[k]) || '';
   });
   if (!选项.预览) 容器.querySelectorAll('[data-demo]').forEach((el) => { el.style.display = 'none'; });
+  if (向导.说明) 取('form-note').textContent = 向导.说明;
+
+  ['race', 'job', 'life', 'side'].forEach((k) => {
+    const g = 槽表[k], lb = 取('lb-' + k);
+    if (!g || !lb) return;
+    lb.querySelector('b').textContent = g.标签 || '';
+    const i = lb.querySelector('i');
+    if (i) i.textContent = g.说明 || '';
+  });
+  {
+    const lb = 取('lb-attr');
+    if (lb) {
+      lb.querySelector('b').textContent = 属性标签;
+      const i = lb.querySelector('i');
+      if (i) i.textContent = 属性配置.说明 ||
+        ('合计 ≤' + 属性合计 + ' · 单项 ' + 单项界[0] + '–' + 单项界[1]);
+    }
+  }
+  if (额外) {
+    取('field-extra').hidden = false;
+    取('lb-extra').querySelector('b').textContent = 额外.标签 || '';
+    取('lb-extra').querySelector('i').textContent = 额外.说明 || '';
+    取('desire').setAttribute('placeholder', 额外.占位 || '');
+    if (额外.最大长度) 取('desire').setAttribute('maxlength', 额外.最大长度);
+  }
+
   const 起点箱 = 容器.querySelector('#opt-box');
   if (起点箱) {
     起点箱.innerHTML = (向导.起点 || []).map((x) => {
@@ -417,11 +458,11 @@ export function 挂载(容器, 选项 = {}) {
   }
 
   var 当前档案 = null;   // { name, 玩家段 }
-  var 属性键 = 向导.属性键;
+  var 属性键 = 属性配置.键 || [];
   var st = { race:'长身人', job:'游侠', life:'不选', side:'不选', name:'', desire:'', attrs:[50,50,50,50,50,50], editing:-1 };
 
-  /* 按职业包生成技能：主职照包（核心+15、其余+10），副业三项 +5，同名取最高 */
-  function 生成技能(身份) {
+  /* 按技能包生成：两个主槽照包给，副槽取「副业」档，同名取最高 */
+  function 生成技能(选) {
     var 出 = {}, 警告 = [];
     function 收(列表, 来源) {
       (列表 || []).forEach(function (x) {
@@ -429,23 +470,23 @@ export function 挂载(容器, 选项 = {}) {
         if (!出[名] || 值 > 出[名].value) 出[名] = { value: 值, source: 来源 };
       });
     }
-    var 战 = 身份.战斗职业 ? 职业包[身份.战斗职业] : null;
-    var 生 = 身份.生活职业 ? 职业包[身份.生活职业] : null;
-    var 副 = 身份.副业 ? 职业包[身份.副业] : null;
+    var 战 = 选.job ? 技能包[选.job] : null;
+    var 生 = 选.life ? 技能包[选.life] : null;
+    var 副 = 选.side ? 技能包[选.side] : null;
 
-    if (战) 收(战.技能, 身份.战斗职业 + '·主职');
-    if (生) 收(生.技能, 身份.生活职业 + (战 ? '·生活' : '·主职'));
+    if (战) 收(战.技能, 选.job + '·主职');
+    if (生) 收(生.技能, 选.life + (战 ? '·生活' : '·主职'));
 
     if (副) {
       var 主职职能 = [].concat(战 ? 战.职能 : [], 生 ? 生.职能 : []);
       var 撞 = (副.职能 || []).filter(function (f) { return 主职职能.indexOf(f) >= 0; });
       if (撞.length) {
-        警告.push('副业「' + 身份.副业 + '」与主职职能重复（' + 撞.join('、') + '），已忽略副业技能');
+        警告.push('副业「' + 选.side + '」与主职职能重复（' + 撞.join('、') + '），已忽略副业技能');
       } else {
-        收(副.副业, 身份.副业 + '·副业');
+        收(副.副业, 选.side + '·副业');
       }
     }
-    if (!战 && !生 && !副) 警告.push('没有任何职业：技能为空，规则上是「任选三项各 +10」，需要手动补');
+    if (!战 && !生 && !副) 警告.push('没有选中任何带技能包的槽位：技能为空');
 
     var 列表 = Object.keys(出);
     return {
@@ -457,31 +498,63 @@ export function 挂载(容器, 选项 = {}) {
   }
 
   /* 档案记录直接存「玩家段」，与 stat_data 的 玩家 同形 */
-  function 组玩家段(欲念) {
-    var 属性 = {};
-    属性键.forEach(function (k, i) { 属性[k] = st.attrs[i]; });
-    var 身份 = { 种族: st.race, 年龄: 20, 战斗职业: st.job,
-                生活职业: st.life === '不选' ? '' : st.life,
-                副业: (st.side && st.side !== '不选') ? st.side : null };
-    var 技 = 生成技能(身份);
-    if (技.警告.length) console.warn('[迷宫饭] 技能生成警告：', 技.警告);
+  /* 玩家段：骨架、槽字段路径、属性字段、技能字段、额外字段路径，全在配置里 */
+  function 段配置() {
+    const p = 配置.玩家段 || {};
     return {
-      身份: 身份,
-      属性: 属性,
-      技能: 技.技能,
-      装备: { 武器: null, 防具: null, 饰品: null },
-      背包: {},
-      欲念: 欲念 || '',
-      金钱: 50
+      骨架: p.骨架 || {},
+      槽字段: p.槽字段 || {},
+      属性字段: p.属性字段 || '属性',
+      技能字段: p.技能字段 || '技能',
     };
   }
 
+  function 放(对象, 路径, 值) {
+    if (!路径) return;
+    var ks = 路径.split('.'), cur = 对象;
+    for (var i = 0; i < ks.length - 1; i++) {
+      if (cur[ks[i]] == null || typeof cur[ks[i]] !== 'object') cur[ks[i]] = {};
+      cur = cur[ks[i]];
+    }
+    cur[ks[ks.length - 1]] = 值;
+  }
+
+  function 读取路径(对象, 路径) {
+    if (!路径) return undefined;
+    return 路径.split('.').reduce(function (a, k) { return a == null ? undefined : a[k]; }, 对象);
+  }
+
+  function 组玩家段(额外值) {
+    var c = 段配置();
+    var 段 = JSON.parse(JSON.stringify(c.骨架));
+    var 槽值 = { race: st.race, job: st.job, life: st.life, side: st.side };
+    Object.keys(c.槽字段).forEach(function (k) {
+      var v = 槽值[k];
+      if (v === '不选') v = '';
+      放(段, c.槽字段[k], v);
+    });
+
+    var 属性 = {};
+    属性键.forEach(function (k, i) { 属性[k] = st.attrs[i]; });
+    放(段, c.属性字段, 属性);
+
+    var 技 = 生成技能(槽值);
+    if (技.警告.length) console.warn('[建档] 技能生成警告：', 技.警告);
+    放(段, c.技能字段, 技.技能);
+
+    if (额外 && 额外.字段) 放(段, 额外.字段, 额外值 || '');
+    return 段;
+  }
+
   function 读玩家段(段) {
-    st.race = 段.身份.种族;
-    st.job = 段.身份.战斗职业;
-    st.life = 段.身份.生活职业 || '不选';
-    st.side = 段.身份.副业 || '不选';
-    st.attrs = 属性键.map(function (k) { return 段.属性[k] == null ? 50 : 段.属性[k]; });
+    var c = 段配置();
+    st.race = 读取路径(段, c.槽字段.race) || '';
+    st.job = 读取路径(段, c.槽字段.job) || '';
+    st.life = 读取路径(段, c.槽字段.life) || '不选';
+    st.side = 读取路径(段, c.槽字段.side) || '不选';
+    var 属性 = 读取路径(段, c.属性字段) || {};
+    st.attrs = 属性键.map(function (k) { return 属性[k] == null ? 50 : 属性[k]; });
+    st.desire = (额外 && 额外.字段) ? (读取路径(段, 额外.字段) || '') : '';
   }
 
   var root = 取('root');
@@ -502,18 +575,19 @@ export function 挂载(容器, 选项 = {}) {
     });
   }
   function raceNote(n){
-    var hit = 向导.种族.filter(function(r){ return r[0] === n; })[0];
+    var hit = 选项清单('race').filter(function(r){ return r[0] === n; })[0];
     取('race-note').textContent = n + ' · ' + (hit ? hit[1] : '');
   }
   function renderRaces(){
-    chips(取('races'), 向导.种族, st.race, function(n){ st.race = n; raceNote(n); renderRaces(); });
+    chips(取('races'), 选项清单('race'), st.race, function(n){ st.race = n; raceNote(n); renderRaces(); });
     raceNote(st.race);
   }
   function renderJobs(){
-    chips(取('jobs'), 向导.战斗职业, st.job, function(n){ st.job = n; renderJobs(); });
-    chips(取('lives'), 向导.生活职业, st.life, function(n){ st.life = n; renderJobs(); });
+    chips(取('jobs'), 选项清单('job'), st.job, function(n){ st.job = n; renderJobs(); });
+    chips(取('lives'), 选项清单('life'), st.life, function(n){ st.life = n; renderJobs(); });
     (function(){
-      var 候选 = 向导.生活职业.filter(function(n){ return n !== '不选' && n !== st.life; });
+      var 候选 = 选项清单('life').map(function(x){ return Array.isArray(x) ? x[0] : x; })
+                   .filter(function(n){ return n !== '不选' && n !== st.life; });
       候选.unshift('不选');
       if (st.side !== '不选' && 候选.indexOf(st.side) < 0) st.side = '不选';
       chips(取('lives2'), 候选, st.side, function(n){ st.side = n; renderJobs(); });
@@ -531,11 +605,11 @@ export function 挂载(容器, 选项 = {}) {
         '<button type="button" data-a="' + i + '" data-d="1">+</button></span>';
       box.appendChild(row);
     });
-    var t = total(), over = t > 300;
+    var t = total(), over = t > 属性合计;
     var pts = 取('pts');
     pts.querySelector('b').textContent = t;
     pts.setAttribute('data-over', over ? '1' : '0');
-    取('pts-warn').textContent = over ? ('超出 ' + (t - 300) + ' 点') : '';
+    取('pts-warn').textContent = over ? ('超出 ' + (t - 属性合计) + ' 点') : '';
     取('btn-save').disabled = over;
   }
   function renderArchives(){
@@ -545,16 +619,20 @@ export function 挂载(容器, 选项 = {}) {
       box.innerHTML = '<div class="empty">还没有档案。建一份，或者直接用默认人设开始。</div>';
       return;
     }
-    var 段 = 当前档案.玩家段, 身 = 段.身份, 技 = 段.技能 || [];
-    var 属性串 = 属性键.map(function (k) { return 段.属性[k]; }).join(' / ');
+    var c = 段配置(), 段 = 当前档案.玩家段;
+    var 槽串 = Object.keys(c.槽字段).map(function (k) { return 读取路径(段, c.槽字段[k]) || ''; })
+                 .filter(Boolean).join(' · ');
+    var 属 = 读取路径(段, c.属性字段) || {};
+    var 属性串 = 属性键.map(function (k) { return 属[k]; }).join(' / ');
+    var 技 = 读取路径(段, c.技能字段) || [];
+    var 额外值 = 额外 ? (读取路径(段, 额外.字段) || '') : '';
     var d = document.createElement('div'); d.className = 'arch';
     d.innerHTML =
       '<span class="arch-m">' + 当前档案.name.charAt(0) + '</span>' +
       '<span class="arch-t"><span class="arch-n">' + 当前档案.name + '</span>' +
-      '<span class="arch-d">' + 身.种族 + ' · ' + 身.战斗职业 + (身.生活职业 ? ' / ' + 身.生活职业 : '') +
-      (身.副业 ? '（副 ' + 身.副业 + '）' : '') + ' · ' + 属性串 + '</span>' +
+      '<span class="arch-d">' + 槽串 + ' · ' + 属性串 + '</span>' +
       '<span class="arch-d">技能 ' + 技.length + ' 项' +
-      (段.欲念 ? '　「' + 段.欲念 + '」' : '') + '</span></span>' +
+      (额外值 ? '　「' + 额外值 + '」' : '') + '</span></span>' +
       '<span class="arch-b"><button class="mini" data-edit="1">改</button></span>';
     box.appendChild(d);
   }
@@ -671,10 +749,10 @@ export function 挂载(容器, 选项 = {}) {
       var b = 当前档案;
       if (!b) return;
       读玩家段(b.玩家段);
-      st.name = b.name; st.desire = b.玩家段.欲念 || ''; st.editing = 1;
+      st.name = b.name; st.desire = 额外 ? (读取路径(b.玩家段, 额外.字段) || '') : ''; st.editing = 1;
       var ni = 取('name');
       ni.value = b.name; ni.disabled = true;
-      取('desire').value = b.玩家段.欲念 || '';
+      取('desire').value = 读取路径(b.玩家段, 额外.字段) || '';
       取('name-note').textContent = '建档后不可改名';
       取('edit-h').textContent = '修改档案 · ' + b.name;
       renderRaces(); renderJobs(); renderAttrs(); go(3); return;
@@ -710,11 +788,11 @@ export function 挂载(容器, 选项 = {}) {
   };
 
   取('btn-save').onclick = function(){
-    var 欲念 = (取('desire').value || '').trim();
+    var 额外值 = (取('desire').value || '').trim();
     var 原名 = (st.editing >= 0 && 当前档案) ? 当前档案.name : '';
     var rec = {
       name: 原名 || ((取('name').value || '').trim() || '无名'),
-      玩家段: 组玩家段(欲念)
+      玩家段: 组玩家段(额外值)
     };
     当前档案 = rec;
     st.editing = -1;
