@@ -29,16 +29,23 @@ SillyTavern 卡的开场通常有三种做法，都有各自的坑：
 ## 目录
 
 ```
-src/
-├── worldbook-util.js   世界书操作：列书 / 扫条目 / 删 / 改名 / 建 / 摘牌写入
-├── initvar-write.js    写 initvar 条目（白名单 + 派生 + 固定键验收）
-├── profile-write.js    写主角档案（常驻条目）
-├── setup-message.js    发建档消息 + /trigger + 幂等标记
-├── setup-entry.js      createSetup()：把上面三件串起来
-├── wizard.js           开局向导外壳（样式 + 结构 + 五步流程）
-└── config.js           配置形状与必填校验
-examples/manfan/        迷宫饭的配置（可直接当模板抄）
-test/smoke.mjs          最小配置的冒烟测试
+src/                      引擎（不含任何一张卡的名词）
+├── worldbook-util.js     世界书操作：列书 / 扫条目 / 删 / 改名 / 建 / 摘牌写入
+├── initvar-write.js      写 initvar 条目（白名单 + 派生 + 固定键验收）
+├── profile-write.js      写主角档案（常驻条目）
+├── setup-message.js      发建档消息 + /trigger + 幂等标记
+├── setup-entry.js        createSetup()：把上面三件串起来
+├── wizard.js             开局向导外壳（样式 + 结构 + 五步流程）
+└── config.js             配置形状与必填校验
+
+cards/
+├── _template/            新卡骨架，照抄改
+└── manfan/               迷宫饭：config.js + skills.js + 现状 README
+
+test/
+├── smoke.mjs             最小配置的引擎冒烟测试
+├── wizard.mjs            向导外壳的 DOM 测试
+└── wizard-manfan.mjs     用真实卡的配置挂载一次
 ```
 
 ---
