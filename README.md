@@ -156,4 +156,6 @@ node test/smoke.mjs
 
 ---
 
-MIT License · 2026 azoth8010
+PolyForm Noncommercial License 1.0.0 · 2026 azoth8010
+
+可自由用于非商业作品；不得用于商业目的。全文见 `LICENSE`。
