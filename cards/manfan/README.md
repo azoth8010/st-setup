@@ -8,7 +8,7 @@
 |---|---|
 | 配置 | 本目录 `config.js` |
 | 技能包 | 本目录 `skills.js`（由卡项目 `tools/embed_skills.py` 从 `职业技能包.json` 生成） |
-| 三份 initvar 模板 | 卡项目 `build/initvar-templates.js`（由四层模板合并而来） |
+| 三份 initvar 模板 | 本目录 `templates.js`（由卡项目 `tools/sync_setup_data.py` 同步） |
 | 世界书 | 卡项目 `build/世界书.json` |
 
 ## 四个槽
@@ -52,3 +52,17 @@
 
 - 卡项目 `preview/开局向导.html` 是同一套界面的**设计预览**，样式与文案的改动现在以本仓库 `src/wizard.js` 为准。
 - 卡项目 `src/` 下还留着四份旧实现（引擎搬走前的那份），切换成 CDN import 之后应删除。
+
+## 首楼入口（app.js）
+
+卡里不存界面：首楼一条正则把 `【开局向导】` 换成
+
+```html
+<div id="mf-setup"></div>
+<script type="module">import('…/st-setup@<commit>/cards/manfan/app.js')</script>
+```
+
+`app.js` 引本目录的 `config.js` + `templates.js`，建 setup、挂到 `#mf-setup`。
+挂载点在首楼 DOM 里，所以是真同层，不是挂 body 的浮层。
+
+模板改了要重新同步并推仓库，否则 CDN 上还是旧模板。
