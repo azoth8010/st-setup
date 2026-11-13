@@ -40,7 +40,7 @@ src/                      引擎（不含任何一张卡的名词）
 
 cards/
 ├── _template/            新卡骨架，照抄改
-└── manfan/               迷宫饭：config.js + skills.js + 现状 README + preview.html
+└── manfan/               迷宫饭：config.js + skills.js + templates.js + app.js（首楼入口）
 
 preview/
 ├── index.html            通用预览页：?config=../cards/<卡>/config.js
@@ -55,6 +55,15 @@ test/
 ---
 
 ## 用法
+
+首楼走外链，卡里只放一行：
+
+```html
+<div id="mf-setup"></div>
+<script type="module">import('…/st-setup@<commit>/cards/manfan/app.js')</script>
+```
+
+`cards/manfan/app.js` 会找容器、建 setup、挂向导。也可以直接调引擎：
 
 ```js
 import { createSetup } from 'https://testingcf.jsdelivr.net/gh/azoth8010/st-setup@<commit>/src/setup-entry.js';
