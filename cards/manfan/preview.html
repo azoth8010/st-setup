@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>迷宫饭 · 建档向导预览</title>
+<style>
+  body{margin:0;font:14px/1.6 system-ui,-apple-system,"Noto Sans SC",sans-serif;background:#f3f1ec;color:#2b2620}
+  .bar{display:flex;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid #ddd6c9;background:#faf8f3}
+  .bar b{font-size:13px}.bar span{font-size:12px;color:#7a7266}
+  .wrap{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;padding:16px;align-items:start}
+  aside{background:#fffdf8;border:1px solid #e4ddd0;border-radius:8px;padding:10px 12px}
+  aside h3{margin:0 0 6px;font-size:12px;color:#7a7266}
+  pre{margin:0;font:11px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;max-height:70vh;overflow:auto}
+  @media (max-width:900px){.wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div class="bar">
+    <b>迷宫饭 · 建档向导</b>
+    <span>本卡的配置 + 引擎的向导外壳；点起点只打印载荷</span>
+  </div>
+  <div class="wrap">
+    <div id="slot"></div>
+    <aside>
+      <h3>写入载荷</h3>
+      <pre id="log">（还没点起点）</pre>
+    </aside>
+  </div>
+
+  <script type="module">
+    import { 启动预览 } from '../../preview/boot.js';
+    import { 配置 } from './config.js';
+    启动预览(配置);
+  </script>
+</body>
+</html>

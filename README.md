@@ -40,7 +40,11 @@ src/                      引擎（不含任何一张卡的名词）
 
 cards/
 ├── _template/            新卡骨架，照抄改
-└── manfan/               迷宫饭：config.js + skills.js + 现状 README
+└── manfan/               迷宫饭：config.js + skills.js + 现状 README + preview.html
+
+preview/
+├── index.html            通用预览页：?config=../cards/<卡>/config.js
+└── boot.js               挂载 + 假写入 + 打印载荷
 
 test/
 ├── smoke.mjs             最小配置的引擎冒烟测试
