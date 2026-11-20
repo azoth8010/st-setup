@@ -21,8 +21,8 @@ export const 样式 = String.raw`
     --sans:-apple-system,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{min-height:100vh;background:#e6dcc8;padding:28px 16px 64px;font-family:var(--sans);color:var(--n900);display:flex;justify-content:center}
-  .wrap{width:100%;max-width:620px}
+  body{margin:0;background:#e6dcc8;padding:14px;font-family:var(--sans);color:var(--n900);display:flex;justify-content:center;align-items:flex-start}
+  .wrap{width:100%;max-width:760px}
 
   /* 预览条（真机不存在） */
   .demo{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;font:11px var(--mono);color:#7a6a54}
@@ -44,6 +44,11 @@ export const 样式 = String.raw`
 
   /* 页面 */
   .pg{display:none;padding:20px 22px 22px}
+  @media (max-width:600px){
+    body{padding:8px}
+    .wrap{max-width:none}
+    .pg{padding:16px 14px 18px}
+  }
   .pg[data-on="1"]{display:block}
   .pg-h{font:600 14px/1.4 var(--serif);letter-spacing:.08em;color:var(--n900);margin-bottom:4px}
   .pg-s{font-size:12px;line-height:1.75;color:var(--ink3);margin-bottom:16px}
@@ -232,23 +237,23 @@ export const 结构 = String.raw`
     <section class="pg" data-i="1">
       <div class="pg-h">运行环境</div>
 
-      <div class="chk">
-        <span class="mk" data-s="ok">√</span>
+      <div class="chk" data-chk="tavern">
+        <span class="mk" data-s="wait">…</span>
         <div class="chk-t">
           <div class="chk-n">酒馆助手（JS-Slash-Runner）
             <a class="lnk" href="https://discord.com/channels/1134557553011998840/1296494001406345318" target="_blank" rel="noopener">原帖</a></div>
         </div>
       </div>
 
-      <div class="chk">
-        <span class="mk" data-s="no">×</span>
+      <div class="chk" data-chk="prompt">
+        <span class="mk" data-s="wait">…</span>
         <div class="chk-t">
           <div class="chk-n">提示词模板（ST-Prompt-Template）
             <a class="lnk" href="https://discord.com/channels/1134557553011998840/1336648321963524127" target="_blank" rel="noopener">原帖</a></div>
         </div>
       </div>
 
-      <div class="chk">
+      <div class="chk" data-chk="mvu">
         <span class="mk" data-s="wait">…</span>
         <div class="chk-t">
           <div class="chk-n">MVU 变量系统</div>
@@ -256,21 +261,20 @@ export const 结构 = String.raw`
         </div>
       </div>
 
-      <div class="chk">
-        <span class="mk" data-s="no">×</span>
+      <div class="chk" data-chk="extra">
+        <span class="mk" data-s="wait">…</span>
         <div class="chk-t">
           <div class="chk-n">额外模型解析</div>
         </div>
       </div>
 
-      <div class="chk">
-        <span class="mk" data-s="ok">√</span>
+      <div class="chk" data-chk="wb">
+        <span class="mk" data-s="wait">…</span>
         <div class="chk-t">
           <div class="chk-n">世界书已导入</div>
         </div>
       </div>
 
-      <p class="note">还有一条不在检测里：接口用<b>聊天补全</b>，酒馆助手设置里的「折叠代码块」设为<b>禁用</b>。</p>
 
       <div class="foot">
         <button class="btn" data-back="0">← 上一步</button>
@@ -353,7 +357,7 @@ export const 结构 = String.raw`
       <div class="who">当前档案：<b id="who-t">默认人设</b></div>
 
       <div class="arc" data-lock="1">
-        <div class="arc-h"><span class="arc-k">α · 讨伐炎龙前</span><span class="arc-t">514 年 2 月 23 日</span></div>
+        <div class="arc-h"><span class="arc-k">α · 讨伐红龙前</span><span class="arc-t">514 年 2 月 23 日</span></div>
         <p class="arc-s">队伍没散，法琳没被吞。</p>
         <div class="locked"><span>尚未开放</span><span style="opacity:.6">·</span><span>后续版本开放</span></div>
       </div>
@@ -449,6 +453,41 @@ export function 挂载(容器, 选项 = {}) {
     }).join('');
   }
 
+  /* 运行环境：能探的都真探，探不到的标「需自查」，不摆样子 */
+  function 探测环境() {
+    const 置 = (键, 状态, 说明) => {
+      const 块 = 容器.querySelector('[data-chk="' + 键 + '"]');
+      if (!块) return;
+      const 标 = 块.querySelector('.mk');
+      if (标) { 标.setAttribute('data-s', 状态); 标.textContent = 状态 === 'ok' ? '√' : (状态 === 'no' ? '×' : '…'); }
+      if (说明) {
+        let d = 块.querySelector('.chk-d');
+        if (!d) { d = document.createElement('div'); d.className = 'chk-d'; 块.querySelector('.chk-t').appendChild(d); }
+        d.textContent = 说明;
+      }
+    };
+    const 有 = (名) => { try { return typeof window[名] !== 'undefined'; } catch (e) { return false; } };
+
+    置('tavern', (有('TavernHelper') || 有('eventOn') || 有('getVariables')) ? 'ok' : 'no',
+       (有('TavernHelper') || 有('getVariables')) ? '' : '没探到酒馆助手：界面、状态条、向导都靠它挂载。');
+
+    let 模板 = false;
+    try { 模板 = typeof getvar === 'function' || typeof getChatMessages === 'function'; } catch (e) { 模板 = false; }
+    置('prompt', 模板 ? 'ok' : 'no', 模板 ? '' : '没探到提示词模板（ST-Prompt-Template）：世界书里的 EJS 控制器不会渲染。');
+
+    置('mvu', 有('Mvu') ? 'ok' : '…', 有('Mvu') ? '' : '还没初始化，进正文后才会挂上；若届时报「stat_data 为空」，先关掉全局 MVU 脚本。');
+
+    let 世界书 = false;
+    try {
+      const ctx = (typeof SillyTavern !== 'undefined' && SillyTavern.getContext) ? SillyTavern.getContext() : null;
+      const 名 = ctx && ctx.chatMetadata && ctx.chatMetadata.world_info;
+      世界书 = !!(名 || (ctx && ctx.worldInfo));
+    } catch (e) { 世界书 = false; }
+    置('wb', 世界书 ? 'ok' : '…', 世界书 ? '' : '没读到当前对话绑定的世界书，自己在酒馆的世界书面板确认一下。');
+
+    置('extra', '…', '这一项脚本探不到：确认「额外模型解析」已开且填了模型，否则判定与变量都不会结算。');
+  }
+
   const 声明箱 = 容器.querySelector('#decl-box');
   if (声明箱) {
     声明箱.innerHTML = (向导.声明 || []).map((段) => (
@@ -456,6 +495,8 @@ export function 挂载(容器, 选项 = {}) {
       段.p.map((t) => '<p>' + t + '</p>').join('') + '</div>'
     )).join('');
   }
+
+  探测环境();
 
   var 当前档案 = null;   // { name, 玩家段 }
   var 属性键 = 属性配置.键 || [];
