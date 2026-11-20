@@ -22,7 +22,7 @@ export const 样式 = String.raw`
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{margin:0;background:#e6dcc8;padding:14px;font-family:var(--sans);color:var(--n900);display:flex;justify-content:center;align-items:flex-start}
-  .wrap{width:100%!important;max-width:820px!important;margin:0 auto}
+  .wrap{width:min(820px,92vw)!important;max-width:820px!important;margin:0 auto}
 
   /* 预览条（真机不存在） */
   .demo{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;font:14px var(--mono);color:#7a6a54}
@@ -43,7 +43,7 @@ export const 样式 = String.raw`
   .step[data-done="1"]{border-top-color:var(--p300);color:var(--n600)}
 
   /* 页面 */
-  .pg{display:none;padding:20px 22px 22px}
+  .pg{display:none;width:100%;padding:20px 22px 22px}
   @media (max-width:600px){
     body{padding:8px}
     .wrap{max-width:none}
