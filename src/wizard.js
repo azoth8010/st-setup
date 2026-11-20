@@ -497,6 +497,22 @@ export function 挂载(容器, 选项 = {}) {
 
   探测环境();
 
+  /* 宽度自适应：按外层容器实测宽度定，不依赖 body / 内容宽度。
+     各页共用一个壳体，这里量一次就够；窗口变了重量。 */
+  function 适配宽度() {
+    const 壳 = 容器.querySelector('.wrap');
+    if (!壳) return;
+    const 父 = 容器.parentElement;
+    const 可用 = Math.max(320, (父 ? 父.clientWidth : 0) || window.innerWidth);
+    const 宽 = Math.min(820, 可用 - 4);
+    壳.style.width = 宽 + 'px';
+    壳.style.maxWidth = 宽 + 'px';
+    console.info('[迷宫饭·向导] 宽度', 宽, '／父', 可用);
+  }
+  适配宽度();
+  window.addEventListener('resize', 适配宽度);
+
+
   var 当前档案 = null;   // { name, 玩家段 }
   var 属性键 = 属性配置.键 || [];
   var st = { race:'长身人', job:'游侠', life:'不选', side:'不选', name:'', desire:'', attrs:[50,50,50,50,50,50], editing:-1 };
