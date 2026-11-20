@@ -107,6 +107,8 @@ export const 样式 = String.raw`
   .attrs{border:1px solid var(--paper-deep);border-radius:2px;overflow:hidden}
   .ar{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:8px;padding:7px 11px;border-bottom:1px solid var(--paper-deep);background:var(--paper-base)}
   .ar:last-child{border-bottom:0}
+  .ar .adj{font-style:normal;font-size:12.5px;color:#8a6a44;margin-left:2px}
+  .ar .fin{font-style:normal;font-size:12.5px;color:var(--p700);margin:0 2px}
   .ar span{font-size:13.5px;color:var(--n700)}
   .bar{height:3px;background:var(--paper-deep);border-radius:2px;overflow:hidden}
   .bar i{display:block;height:100%;background:var(--p400)}
@@ -396,6 +398,8 @@ export function 挂载(容器, 选项 = {}) {
   const 属性配置 = 向导.属性 || {};
   const 属性标签 = 属性配置.标签 || '属性';
   const 属性合计 = 属性配置.合计上限 == null ? 300 : 属性配置.合计上限;
+  const 修正表 = 向导.种族修正 || {};
+  function 种族修正() { return 修正表[st.race] || [0,0,0,0,0,0]; }
   const 单项界 = 属性配置.单项 || [30, 70];
 
   /* 额外文本字段：0 或 1 个，写进 config 指定的变量路径 */
@@ -429,7 +433,7 @@ export function 挂载(容器, 选项 = {}) {
       lb.querySelector('b').textContent = 属性标签;
       const i = lb.querySelector('i');
       if (i) i.textContent = 属性配置.说明 ||
-        ('合计 ≤' + 属性合计 + ' · 单项 ' + 单项界[0] + '–' + 单项界[1]);
+        ('购点合计 ≤' + 属性合计 + ' · 单项 ' + 单项界[0] + '–' + 单项界[1] + '（种族修正另算，不计入合计）');
     }
   }
   if (额外) {
@@ -590,8 +594,8 @@ export function 挂载(容器, 选项 = {}) {
       放(段, c.槽字段[k], v);
     });
 
-    var 属性 = {};
-    属性键.forEach(function (k, i) { 属性[k] = st.attrs[i]; });
+    var 属性 = {}, 修 = 种族修正();
+    属性键.forEach(function (k, i) { 属性[k] = Math.max(5, Math.min(95, st.attrs[i] + (修[i] || 0))); });
     放(段, c.属性字段, 属性);
 
     var 技 = 生成技能(槽值);
@@ -655,9 +659,12 @@ export function 挂载(容器, 选项 = {}) {
     box.innerHTML = '';
     st.attrs.forEach(function(v, i){
       var row = document.createElement('div'); row.className = 'ar';
+      var 修 = 种族修正()[i] || 0;
+      var 终 = Math.max(5, Math.min(95, v + 修));
       row.innerHTML = '<span>' + 属性键[i] + '</span>' +
-        '<span class="bar"><i style="width:' + v + '%"></i></span>' +
+        '<span class="bar"><i style="width:' + 终 + '%"></i></span>' +
         '<span class="num"><button type="button" data-a="' + i + '" data-d="-1">−</button><b>' + v + '</b>' +
+        (修 ? '<em class="adj" title="种族修正">' + (修 > 0 ? '+' : '') + 修 + '</em><i class="fin">→' + 终 + '</i>' : '') +
         '<button type="button" data-a="' + i + '" data-d="1">+</button></span>';
       box.appendChild(row);
     });
