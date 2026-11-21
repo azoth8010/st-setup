@@ -550,8 +550,8 @@ export function 挂载(容器, 选项 = {}) {
       /* 经典滚动条占位；覆盖式滚动条量出来是 0，靠后面的固定净空兜底 */
       滚动 = Math.max(0, (聊.offsetWidth || 0) - (聊.clientWidth || 0));
     }
-    /* 末尾的 12 是给滚动条/圆角留的视觉净空，不然右边缘会贴到滚动条底下 */
-    const 宽 = Math.max(280, Math.min(2000, 可用 - 内边 - 滚动 - 12));
+    /* 末尾的 16 是给滚动条/圆角留的视觉净空，不然右边缘会贴到滚动条底下 */
+    const 宽 = Math.max(280, Math.min(2000, 可用 - 内边 - 滚动 - 16));
     if (壳.dataset.w === String(宽)) return;
     壳.dataset.w = String(宽);
     壳.style.setProperty('width', 宽 + 'px', 'important');
