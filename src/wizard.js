@@ -543,9 +543,15 @@ export function 挂载(容器, 选项 = {}) {
     const 体 = getComputedStyle(document.body);
     const 内边 = (parseFloat(体.paddingLeft) || 0) + (parseFloat(体.paddingRight) || 0);
     let 可用 = 量宿主宽();
-    const 聊 = 取宽(外层.querySelector('#chat'));
-    if (聊 > 0) 可用 = Math.min(可用, 聊 - 8);
-    const 宽 = Math.max(280, Math.min(2000, 可用 - 内边 - 4));
+    const 聊 = 外层.querySelector('#chat');
+    let 滚动 = 0;
+    if (聊) {
+      可用 = Math.min(可用, 取宽(聊) - 8);
+      /* 经典滚动条占位；覆盖式滚动条量出来是 0，靠后面的固定净空兜底 */
+      滚动 = Math.max(0, (聊.offsetWidth || 0) - (聊.clientWidth || 0));
+    }
+    /* 末尾的 12 是给滚动条/圆角留的视觉净空，不然右边缘会贴到滚动条底下 */
+    const 宽 = Math.max(280, Math.min(2000, 可用 - 内边 - 滚动 - 12));
     if (壳.dataset.w === String(宽)) return;
     壳.dataset.w = String(宽);
     壳.style.setProperty('width', 宽 + 'px', 'important');
