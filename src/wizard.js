@@ -21,8 +21,8 @@ export const 样式 = String.raw`
     --sans:-apple-system,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{margin:0;background:#e6dcc8;padding:14px;font-family:var(--sans);color:var(--n900);display:flex;justify-content:center;align-items:flex-start}
-  .wrap{width:min(820px,92vw)!important;max-width:820px!important;margin:0 auto}
+  body{margin:0;background:#e6dcc8;padding:14px;font-family:var(--sans);color:var(--n900);display:block}
+  #root{width:100%;margin:0 auto}
 
   /* 预览条（真机不存在） */
   .demo{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;font:14px var(--mono);color:#7a6a54}
@@ -46,7 +46,6 @@ export const 样式 = String.raw`
   .pg{display:none;width:100%;padding:20px 22px 22px}
   @media (max-width:600px){
     body{padding:8px}
-    .wrap{max-width:none}
     .pg{padding:16px 14px 18px}
   }
   .pg[data-on="1"]{display:block}
@@ -501,20 +500,45 @@ export function 挂载(容器, 选项 = {}) {
 
   探测环境();
 
-  /* 宽度自适应：按外层容器实测宽度定，不依赖 body / 内容宽度。
-     各页共用一个壳体，这里量一次就够；窗口变了重量。 */
-  function 适配宽度() {
-    const 壳 = 容器.querySelector('.wrap');
-    if (!壳) return;
-    const 父 = 容器.parentElement;
-    const 可用 = Math.max(320, (父 ? 父.clientWidth : 0) || window.innerWidth);
-    const 宽 = Math.min(820, 可用 - 4);
-    壳.style.width = 宽 + 'px';
-    壳.style.maxWidth = 宽 + 'px';
-    console.info('[迷宫饭·向导] 宽度', 宽, '／父', 可用);
+  /* 宽度：首楼会被渲染在一个「按内容撑宽」的 iframe 里，所以自己这一层的宽度不可信——
+     内容短（档案页）就窄，内容长（声明页）就宽。要量宿主聊天区，再给卡片定死 px。
+     旧版找 .wrap，但结构里早已没有 .wrap，等于从未生效。 */
+  function 量宿主宽() {
+    const 取 = (el) => (el && el.clientWidth) || 0;
+    let 外层 = document;
+    try {
+      if (window.parent && window.parent !== window) 外层 = window.parent.document;
+    } catch (e) { 外层 = document; }
+    const 文 = 外层.querySelector('#chat .mes_text') || 外层.querySelector('.mes_text');
+    const 文宽 = 取(文);
+    if (文宽 >= 360) return 文宽;
+    const 聊 = 取(外层.querySelector('#chat'));
+    if (聊 > 0) return 聊 - 32;
+    try {
+      if (window.frameElement) {
+        const w = window.frameElement.getBoundingClientRect().width;
+        if (w > 0) return w;
+      }
+    } catch (e) {}
+    return 取(容器.parentElement) || window.innerWidth;
   }
-  适配宽度();
+
+  function 适配宽度() {
+    const 壳 = 容器.querySelector('#root');
+    if (!壳) return;
+    const 体 = getComputedStyle(document.body);
+    const 内边 = (parseFloat(体.paddingLeft) || 0) + (parseFloat(体.paddingRight) || 0);
+    const 宽 = Math.max(320, Math.min(820, 量宿主宽() - 内边 - 4));
+    壳.style.setProperty('width', 宽 + 'px', 'important');
+    壳.style.setProperty('max-width', 宽 + 'px', 'important');
+  }
+  [0, 120, 500, 1500].forEach((ms) => setTimeout(适配宽度, ms));
   window.addEventListener('resize', 适配宽度);
+  try {
+    const 外层 = window.parent !== window ? window.parent.document : document;
+    const 文 = 外层.querySelector('#chat .mes_text') || 外层.querySelector('.mes_text');
+    if (文 && 'ResizeObserver' in window) new ResizeObserver(适配宽度).observe(文);
+  } catch (e) {}
 
 
   var 当前档案 = null;   // { name, 玩家段 }
