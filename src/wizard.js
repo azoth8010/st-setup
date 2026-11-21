@@ -545,7 +545,7 @@ export function 挂载(容器, 选项 = {}) {
     let 可用 = 量宿主宽();
     const 聊 = 取宽(外层.querySelector('#chat'));
     if (聊 > 0) 可用 = Math.min(可用, 聊 - 8);
-    const 宽 = Math.max(280, Math.min(820, 可用 - 内边 - 4));
+    const 宽 = Math.max(280, Math.min(2000, 可用 - 内边 - 4));
     if (壳.dataset.w === String(宽)) return;
     壳.dataset.w = String(宽);
     壳.style.setProperty('width', 宽 + 'px', 'important');
