@@ -500,45 +500,76 @@ export function 挂载(容器, 选项 = {}) {
 
   探测环境();
 
-  /* 宽度：首楼会被渲染在一个「按内容撑宽」的 iframe 里，所以自己这一层的宽度不可信——
-     内容短（档案页）就窄，内容长（声明页）就宽。要量宿主聊天区，再给卡片定死 px。
-     旧版找 .wrap，但结构里早已没有 .wrap，等于从未生效。 */
+  /* 宽度：首楼会被渲染在一个「按内容撑宽」的 iframe 里，自己这一层不可信。
+     量宿主的消息正文列，给卡片写死 px；并且必须持续跟着宿主变——
+     只在挂载时量一次，窗口一变就是「窄了被裁、宽了留白」。 */
+  function 外层文档() {
+    try { if (window.parent && window.parent !== window) return window.parent.document; } catch (e) {}
+    return document;
+  }
+  const 取宽 = (el) => (el && el.clientWidth) || 0;
+
   function 量宿主宽() {
-    const 取 = (el) => (el && el.clientWidth) || 0;
-    let 外层 = document;
-    try {
-      if (window.parent && window.parent !== window) 外层 = window.parent.document;
-    } catch (e) { 外层 = document; }
+    const 外层 = 外层文档();
     const 文 = 外层.querySelector('#chat .mes_text') || 外层.querySelector('.mes_text');
-    const 文宽 = 取(文);
-    if (文宽 >= 360) return 文宽;
-    const 聊 = 取(外层.querySelector('#chat'));
+    const 文宽 = 取宽(文);
+    if (文宽 >= 300) return 文宽;
+
+    const 消息 = 外层.querySelector('#chat .mes') || 外层.querySelector('.mes');
+    if (消息) {
+      const 头像 = 消息.querySelector('.avatar');
+      const 净 = 取宽(消息) - (头像 ? 取宽(头像) + 8 : 0);
+      if (净 >= 300) return 净;
+    }
+
+    const 聊 = 取宽(外层.querySelector('#chat'));
     if (聊 > 0) return 聊 - 32;
+
     try {
-      if (window.frameElement) {
-        const w = window.frameElement.getBoundingClientRect().width;
-        if (w > 0) return w;
+      const fe = window.frameElement;
+      if (fe && fe.getBoundingClientRect) {
+        const w = fe.getBoundingClientRect().width;
+        if (w >= 300) return w;
       }
     } catch (e) {}
-    return 取(容器.parentElement) || window.innerWidth;
+
+    return 取宽(容器.parentElement) || window.innerWidth;
   }
 
   function 适配宽度() {
     const 壳 = 容器.querySelector('#root');
     if (!壳) return;
+    const 外层 = 外层文档();
     const 体 = getComputedStyle(document.body);
     const 内边 = (parseFloat(体.paddingLeft) || 0) + (parseFloat(体.paddingRight) || 0);
-    const 宽 = Math.max(320, Math.min(820, 量宿主宽() - 内边 - 4));
+    let 可用 = 量宿主宽();
+    const 聊 = 取宽(外层.querySelector('#chat'));
+    if (聊 > 0) 可用 = Math.min(可用, 聊 - 8);
+    const 宽 = Math.max(280, Math.min(820, 可用 - 内边 - 4));
+    if (壳.dataset.w === String(宽)) return;
+    壳.dataset.w = String(宽);
     壳.style.setProperty('width', 宽 + 'px', 'important');
     壳.style.setProperty('max-width', 宽 + 'px', 'important');
   }
-  [0, 120, 500, 1500].forEach((ms) => setTimeout(适配宽度, ms));
+
+  [0, 120, 500, 1200].forEach((ms) => setTimeout(适配宽度, ms));
   window.addEventListener('resize', 适配宽度);
+  try { window.parent.addEventListener('resize', 适配宽度); } catch (e) {}
   try {
-    const 外层 = window.parent !== window ? window.parent.document : document;
-    const 文 = 外层.querySelector('#chat .mes_text') || 外层.querySelector('.mes_text');
-    if (文 && 'ResizeObserver' in window) new ResizeObserver(适配宽度).observe(文);
+    const 外层 = 外层文档();
+    if ('ResizeObserver' in window) {
+      const 观 = new ResizeObserver(适配宽度);
+      ['#chat', '#chat .mes_text', '.mes'].forEach((sel) => {
+        const el = 外层.querySelector(sel);
+        if (el) 观.observe(el);
+      });
+    }
   } catch (e) {}
+  /* 兜底轮询：宿主改布局不一定触发上面任何事件；数据没变时只做一次比较。 */
+  const 轮询 = setInterval(() => {
+    if (!document.body || !document.body.contains(容器)) { clearInterval(轮询); return; }
+    适配宽度();
+  }, 400);
 
 
   var 当前档案 = null;   // { name, 玩家段 }
