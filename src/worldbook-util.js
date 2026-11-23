@@ -60,10 +60,11 @@ const 保留字段 = ['comment', 'name', 'key', 'keysecondary', 'constant', 'sel
   'delayUntilRecursion', 'group', 'groupOverride', 'groupWeight', 'scanDepth',
   'caseSensitive', 'matchWholeWords', 'useGroupScoring', 'sticky', 'cooldown', 'delay'];
 
-export async function 建条目(书, 旧条目, 内容, 缺省 = {}, 名 = '') {
+export async function 建条目(书, 旧条目, 内容, 缺省 = {}, 名 = '', 强制 = {}) {
   const 新 = {};
   保留字段.forEach((k) => { if (旧条目 && 旧条目[k] !== undefined) 新[k] = 旧条目[k]; });
   Object.keys(缺省).forEach((k) => { if (新[k] === undefined) 新[k] = 缺省[k]; });
+  Object.assign(新, 强制);
   // 旧条目优先；新建时用缺省.comment，再退到调用方给的「名」——
   // 少了这一层，新建的条目会变成 comment=undefined，扫描时永远匹配不到
   新.comment = 旧条目?.comment ?? 旧条目?.name ?? 缺省.comment ?? 名;
@@ -79,18 +80,18 @@ export async function 建条目(书, 旧条目, 内容, 缺省 = {}, 名 = '') {
  *
  * @returns {Promise<{书:string, 条目名:string, 字节数:number}>}
  */
-export async function 摘牌写入({ 书, 旧条目, 名, 正文, 缺省 }) {
+export async function 摘牌写入({ 书, 旧条目, 名, 正文, 缺省, 强制 = {} }) {
   const 临时名 = 旧条目 ? ('旧备份-' + Date.now() + '-' + Math.floor(Math.random() * 1000)) : null;
   const 可改名 = 旧条目 ? await 改条目名(书, 旧条目.uid, 临时名) : false;
 
   try {
     if (旧条目 && !可改名) await 删条目(书, 名);   // 不支持改名时的退路
-    await 建条目(书, 旧条目, 正文, 缺省, 名);
+    await 建条目(书, 旧条目, 正文, 缺省, 名, 强制);
   } catch (e) {
     try { await 删条目(书, 名); } catch (_) {}
     try {
       if (可改名) await 改条目名(书, 旧条目.uid, 名);
-      else if (旧条目) await 建条目(书, 旧条目, 旧条目.content || '', 缺省, 名);
+      else if (旧条目) await 建条目(书, 旧条目, 旧条目.content || '', 缺省, 名, 强制);
     } catch (_) {}
     throw new Error('写入「' + 名 + '」失败：' + (e?.message || e));
   }

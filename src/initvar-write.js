@@ -122,7 +122,7 @@ export async function 写入Initvar({ 模板, 玩家, 配置 }) {
   断言(正文.length > (i.最小字节 ?? 80), '内容过短，疑似模板损坏');
 
   // ④ 摘牌式写入
-  await 摘牌写入({ 书, 旧条目: 条目, 名, 正文 });
+  await 摘牌写入({ 书, 旧条目: 条目, 名, 正文, 强制: { disable: true } });
 
   // ⑤ 复核唯一性
   const 复核 = await 扫条目((n) => n.toLowerCase().includes(标记));
