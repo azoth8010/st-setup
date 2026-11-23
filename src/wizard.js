@@ -667,14 +667,19 @@ export function 挂载(容器, 选项 = {}) {
     return 段;
   }
 
-  function 读玩家段(段) {
+  function 读玩家段(段, 底值) {
     var c = 段配置();
     st.race = 读取路径(段, c.槽字段.race) || '';
     st.job = 读取路径(段, c.槽字段.job) || '';
     st.life = 读取路径(段, c.槽字段.life) || '不选';
     st.side = 读取路径(段, c.槽字段.side) || '不选';
     var 属性 = 读取路径(段, c.属性字段) || {};
-    st.attrs = 属性键.map(function (k) { return 属性[k] == null ? 50 : 属性[k]; });
+    var 修 = 种族修正();
+    st.attrs = 属性键.map(function (k, i) {
+      if (Array.isArray(底值) && 底值.length === 属性键.length) return 底值[i];
+      var v = 属性[k] == null ? 50 : 属性[k];
+      return Math.max(30, Math.min(70, v - (修[i] || 0)));
+    });
     st.desire = (额外 && 额外.字段) ? (读取路径(段, 额外.字段) || '') : '';
   }
 
@@ -700,18 +705,18 @@ export function 挂载(容器, 选项 = {}) {
     取('race-note').textContent = n + ' · ' + (hit ? hit[1] : '');
   }
   function renderRaces(){
-    chips(取('races'), 选项清单('race'), st.race, function(n){ st.race = n; raceNote(n); renderRaces(); });
+    chips(取('races'), 选项清单('race'), st.race, function(n){ st.race = n; st.dirty = 1; raceNote(n); renderRaces(); });
     raceNote(st.race);
   }
   function renderJobs(){
-    chips(取('jobs'), 选项清单('job'), st.job, function(n){ st.job = n; renderJobs(); });
-    chips(取('lives'), 选项清单('life'), st.life, function(n){ st.life = n; renderJobs(); });
+    chips(取('jobs'), 选项清单('job'), st.job, function(n){ st.job = n; st.dirty = 1; renderJobs(); });
+    chips(取('lives'), 选项清单('life'), st.life, function(n){ st.life = n; st.dirty = 1; renderJobs(); });
     (function(){
       var 候选 = 选项清单('life').map(function(x){ return Array.isArray(x) ? x[0] : x; })
                    .filter(function(n){ return n !== '不选' && n !== st.life; });
       候选.unshift('不选');
       if (st.side !== '不选' && 候选.indexOf(st.side) < 0) st.side = '不选';
-      chips(取('lives2'), 候选, st.side, function(n){ st.side = n; renderJobs(); });
+      chips(取('lives2'), 候选, st.side, function(n){ st.side = n; st.dirty = 1; renderJobs(); });
     })();
   }
   function total(){ return st.attrs.reduce(function(a,b){ return a+b; }, 0); }
@@ -803,7 +808,7 @@ export function 挂载(容器, 选项 = {}) {
     var 名 = (取('who-t').textContent || '').trim() || '默认人设';
     var 项 = (向导.起点 || []).filter(function (x) { return String(x.id) === String(起点); })[0] || {};
     var 场 = 项.标签 || 项.名 || '';
-    var 段 = 当前档案 ? JSON.parse(JSON.stringify(当前档案.玩家段)) : 组玩家段('');
+    var 段 = (当前档案 && !st.dirty) ? JSON.parse(JSON.stringify(当前档案.玩家段)) : 组玩家段((取('desire').value || '').trim());
 
     var 载荷 = { 名字: 名, 玩家段: 段, 起点: 项.键 || 起点 };
     容器.dispatchEvent(new CustomEvent('setup:payload', { detail: 载荷, bubbles: true }));
@@ -864,7 +869,7 @@ export function 挂载(容器, 选项 = {}) {
       if (nv < 30 || nv > 70) return;
       var t2 = total() + d;
       if (t2 > 300) return;
-      st.attrs[i] = nv;
+      st.attrs[i] = nv; st.dirty = 1;
       renderAttrs();
       return;
     }
@@ -872,7 +877,7 @@ export function 挂载(容器, 选项 = {}) {
     if ((t = e.target.closest('[data-edit]'))) {
       var b = 当前档案;
       if (!b) return;
-      读玩家段(b.玩家段);
+      读玩家段(b.玩家段, b.底值);
       st.name = b.name; st.desire = 额外 ? (读取路径(b.玩家段, 额外.字段) || '') : ''; st.editing = 1;
       var ni = 取('name');
       ni.value = b.name; ni.disabled = true;
@@ -916,9 +921,11 @@ export function 挂载(容器, 选项 = {}) {
     var 原名 = (st.editing >= 0 && 当前档案) ? 当前档案.name : '';
     var rec = {
       name: 原名 || ((取('name').value || '').trim() || '无名'),
+      底值: st.attrs.slice(0),
       玩家段: 组玩家段(额外值)
     };
     当前档案 = rec;
+    st.dirty = 0;
     st.editing = -1;
     setWho(rec.name);
     go(4);
