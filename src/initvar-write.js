@@ -83,6 +83,77 @@ export function 校验固定键(tree, 配置) {
  * @param {Object} opt.玩家   建档结果
  * @param {Object} opt.配置   setup config
  */
+
+/* ---------------- YAML 序列化 ----------------
+   条目正文用 YAML，和源头 [initvar] 模板同格式。字符串一律带引号，
+   键名只在含特殊字符时才加引号，读起来仍像原模板。 */
+function 是纯量(v) { return v === null || typeof v !== 'object'; }
+
+function 标量(v) {
+  if (v === null || v === undefined) return 'null';
+  if (typeof v === 'number') return Number.isFinite(v) ? String(v) : 'null';
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  return '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"';
+}
+
+function 键名(k) {
+  const s = String(k);
+  return /[:#\n"'\[\]{},&*!|>@`]|^-|^\s|\s$/.test(s) ? 标量(s) : s;
+}
+
+function 转YAML(v, 缩进 = 0) {
+  const pad = '  '.repeat(缩进);
+  if (Array.isArray(v)) {
+    if (!v.length) return pad + '[]';
+    return v.map(function (x) {
+      if (x && typeof x === 'object' && !Array.isArray(x)) {
+        const ks = Object.keys(x);
+        if (!ks.length) return pad + '- {}';
+        let 出 = pad + '- ' + 键名(ks[0]) + ': ' +
+          (是纯量(x[ks[0]]) ? 标量(x[ks[0]]) : '\n' + 转YAML(x[ks[0]], 缩进 + 2));
+        for (let i = 1; i < ks.length; i++) {
+          const k = ks[i];
+          出 += '\n' + pad + '  ' + 键名(k) + ': ' +
+            (是纯量(x[k]) ? 标量(x[k]) : '\n' + 转YAML(x[k], 缩进 + 2));
+        }
+        return 出;
+      }
+      return pad + '- ' + (是纯量(x) ? 标量(x) : '\n' + 转YAML(x, 缩进 + 1));
+    }).join('\n');
+  }
+  if (v && typeof v === 'object') {
+    const ks = Object.keys(v);
+    if (!ks.length) return pad + '{}';
+    return ks.map(function (k) {
+      return pad + 键名(k) + ': ' + (是纯量(v[k]) ? 标量(v[k]) : '\n' + 转YAML(v[k], 缩进 + 1));
+    }).join('\n');
+  }
+  return pad + 标量(v);
+}
+
+/* ---------------- 重载初始变量 ----------------
+   MVU 的合并是「旧值优先」（{...新, ...旧}），且每本书只初始化一次
+   （initialized_lorebooks）。所以写完之后必须清空 stat_data、清掉初始化标记，
+   再让 MVU 重读，否则新种子永远盖不过旧变量。 */
+async function 重载初始变量(tree) {
+  const 有Mvu = (typeof Mvu !== 'undefined') && typeof Mvu.reloadInitVar === 'function';
+  if (!有Mvu) return { 跳过: true, 原因: 'Mvu 未就绪' };
+  const 楼层 = (typeof getCurrentMessageId === 'function') ? getCurrentMessageId() : 'latest';
+  const 读 = (typeof getVariables === 'function') ? (getVariables({ type: 'message', message_id: 楼层 }) || {}) : {};
+  const data = JSON.parse(JSON.stringify(读));
+  data.stat_data = {};
+  delete data.initialized_lorebooks;
+  await Mvu.reloadInitVar(data);
+  if (typeof replaceVariables === 'function') {
+    await replaceVariables(data, { type: 'message', message_id: 楼层 });
+  }
+  const 后 = (typeof getVariables === 'function') ? (getVariables({ type: 'message', message_id: 楼层 }) || {}) : {};
+  const 实 = (后 && 后.stat_data && 后.stat_data.人物) ? Object.keys(后.stat_data.人物).sort() : [];
+  const 期 = (tree && tree.人物) ? Object.keys(tree.人物).sort() : [];
+  const 一致 = 实.length === 期.length && 实.every(function (k, i) { return k === 期[i]; });
+  return { 写入: true, 一致: 一致, 实: 实, 期: 期, 楼层: 楼层 };
+}
+
 export async function 写入Initvar({ 模板, 玩家, 配置 }) {
   断言(模板 && typeof 模板 === 'object', '没拿到模板');
   const i = 配置.initvar;
@@ -117,7 +188,7 @@ export async function 写入Initvar({ 模板, 玩家, 配置 }) {
   校验固定键(tree, 配置);
   if (typeof i.额外验收 === 'function') i.额外验收(tree);
 
-  const 正文 = '<initvar>\n' + JSON.stringify(tree) + '\n</initvar>';
+  const 正文 = '<initvar>\n' + 转YAML(tree) + '\n</initvar>';
   断言(正文.includes('<initvar>') && 正文.includes('</initvar>'), '序列化失败');
   断言(正文.length > (i.最小字节 ?? 80), '内容过短，疑似模板损坏');
 
@@ -130,8 +201,18 @@ export async function 写入Initvar({ 模板, 玩家, 配置 }) {
   const 回读 = String(复核.命中[0].条目.content || '');
   断言(回读.includes('<initvar>'), '写进去的内容不完整：读回里没有 <initvar>');
 
+  // ⑥ 让 MVU 重读这份种子，并按模板核对人物键
+  let 重载;
+  try { 重载 = await 重载初始变量(tree); }
+  catch (e) { throw new Error('initvar 已写入，但重载失败：' + (e?.message || e)); }
+  if (重载 && 重载.跳过) console.warn('[%s] 没有重载初始变量：%s', 配置.卡名, 重载.原因 || '');
+  if (重载 && 重载.写入 && 重载.一致 === false) {
+    throw new Error('重载后变量与模板不一致：模板人物 ' + ((重载.期 || []).join('、') || '（空）') +
+      '，实际 ' + ((重载.实 || []).join('、') || '（空）'));
+  }
+
   console.log('[%s] initvar 已写入 %s（%d 字节）', 配置.卡名, 名, 正文.length);
-  return { 书, 条目名: 名, 字节数: 正文.length, 已备份, 树: tree };
+  return { 书, 条目名: 名, 字节数: 正文.length, 已备份, 树: tree, 重载 };
 }
 
 /** 调试：读现有 initvar 并解析。 */
@@ -141,6 +222,12 @@ export async function 读Initvar({ 配置 }) {
   if (命中.length !== 1) return { 数量: 命中.length };
   const m = String(命中[0].条目.content || '').match(/<initvar>([\s\S]*?)<\/initvar>/);
   if (!m) return { 数量: 1, 错误: '条目里没有 <initvar> 块' };
-  try { return { 数量: 1, 书: 命中[0].书, 数据: JSON.parse(m[1].trim()) }; }
-  catch (e) { return { 数量: 1, 错误: '内容不是合法 JSON：' + (e?.message || e) }; }
+  const 文本 = m[1].trim();
+  try { return { 数量: 1, 书: 命中[0].书, 数据: JSON.parse(文本) }; }
+  catch (e) {
+    if (typeof YAML !== 'undefined' && typeof YAML.parse === 'function') {
+      try { return { 数量: 1, 书: 命中[0].书, 数据: YAML.parse(文本) }; } catch (_) {}
+    }
+    return { 数量: 1, 书: 命中[0].书, 错误: '内容解析失败：' + (e?.message || e), 原文: 文本 };
+  }
 }
